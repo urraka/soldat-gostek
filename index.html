@@ -1,0 +1,1227 @@
+<!doctype html>
+<html>
+<head>
+<meta http-equiv="Content-type" content="text/html; charset=utf-8">
+<title>Soldat Gostek</title>
+<style type="text/css">
+
+/* layout */
+::-webkit-scrollbar {width:12px;height:12px;}
+::-webkit-scrollbar-corner {background:none;}
+::-webkit-scrollbar-thumb {border-radius:7px;border:4px solid rgba(0, 0, 0, 0);}
+::-webkit-scrollbar-thumb {background-clip:padding-box;}
+html,body {margin:0;padding:0;width:100%;height:100%;overflow:hidden;}
+body {font:11px/1.2 Consolas,monospace;}
+canvas {display:block;}
+input[type="text"] {padding:0;margin:0;border:0;font:inherit;text-align:inherit;}
+input[type="text"] {outline:none;background:transparent;}
+button, label {font:inherit;border:0;background:transparent;cursor:pointer;}
+button, label {outline:0;padding:0;line-height:24px;}
+button::after,button::before {content:"\00A0";}
+label::after,label::before {content:"\00A0";}
+button:hover::before,label:hover::before {content:"[";}
+button:hover::after,label:hover::after {content:"]";}
+label {overflow:hidden;}
+input[type="file"] {position:absolute;opacity:0;bottom:100%;outline:0;}
+#editor {position:absolute;left:0;right:0;top:0;bottom:0;display:flex;cursor:default;}
+#viewport {flex:1;}
+#right_panel {width:400px;border-left:1px solid;display:flex;flex-flow:column;}
+#right_panel_head {height:24px;border-bottom:1px solid;flex:0 0 auto;padding:0 5px;}
+#table_panel {flex:1;overflow:auto;}
+#right_panel table {table-layout:fixed;width:100%;border-collapse:collapse;}
+#right_panel tr > * {border:1px solid;padding:2px 5px;font-weight:normal;}
+#right_panel tr > :first-child {width:20px;border-left:0;text-align:center;}
+#right_panel th {border-top:0;padding:5px;}
+#right_panel th:nth-child(n+3) {width:40px;}
+#right_panel td:nth-child(n+3) {text-align:right;padding:0;}
+#right_panel input[type="text"] {padding:2px 5px;width:40px;}
+#right_panel td:first-child {-moz-user-select:-moz-none;-webkit-user-select:none;}
+#right_panel td:first-child {user-select:none;}
+
+/* colors */
+.light {color:#333;background:#EEE;}
+.light ::-webkit-scrollbar-thumb {background-color:rgba(0,0,0,0.25);}
+.light #right_panel {background:#FFF;border-color:#CCC;}
+.light #right_panel tr > *, .light #right_panel_head {border-color:#DDD;}
+.light #right_panel tr:nth-child(even) {background:#F8F8F8;}
+.light #right_panel thead {background:#F8F8F8;}
+.light button, .light label {color:#777;}
+.light button:hover, .light label:hover {color:#000;}
+
+</style>
+</head>
+<body>
+
+<div id="editor" class="light">
+	<div id="viewport"></div>
+	<div id="right_panel">
+		<div id="right_panel_head">
+			<label><input id="btn_load" type="file">Load</label>
+			<button id="btn_save">Save</button>
+			<button id="btn_reset">Reset</button>
+		</div>
+		<div id="table_panel">
+			<table>
+				<thead>
+					<tr>
+						<th></th>
+						<th>SPRITE</th>
+						<th>P1</th>
+						<th>P2</th>
+						<th>CX</th>
+						<th>CY</th>
+					</tr>
+				</thead>
+				<tbody></tbody>
+			</table>
+		</div>
+	</div>
+</div>
+
+<script src="jszip.min.js"></script>
+<script src="data_files.js"></script>
+<script src="gostek_data.js"></script>
+<script src="gfx_ids.js"></script>
+
+<script>
+
+initialize();
+
+function initialize()
+{
+	app = {};
+
+	app.objects = {};
+	app.animations = {};
+	app.images = {};
+
+	app.dom = {};
+	app.dom.root = document.querySelector("#editor");
+	app.dom.viewport = document.querySelector("#viewport");
+	app.dom.gostek_table = document.querySelector("#right_panel table");
+
+	app.canvas = document.createElement("canvas");
+	app.context = app.canvas.getContext("2d");
+
+	app.view = {};
+	app.view.x = 0;
+	app.view.y = 0;
+	app.view.scale = 1;
+	app.view.grid = true;
+	app.view.gostek = true;
+	app.view.skeleton_lines = true;
+	app.view.skeleton_points = true;
+	app.view.skeleton_shadow = true;
+
+	app.anim = {};
+	app.anim.time = 0;
+	app.anim.elapsed = 0;
+	app.anim.speed = 1;
+	app.anim.frame_id = null;
+	app.anim.running = false;
+
+	app.themes = {};
+	app.themes.light = {};
+	app.themes.light.grid = "#CCC";
+	app.themes.light.skeleton_lines = "#FF0";
+	app.themes.light.skeleton_shadow = "#333";
+	app.themes.light.point_back = "#FF0";
+	app.themes.light.point_text = "#333";
+	app.theme = app.themes[app.dom.root.className];
+
+	app.gostek = create_gostek();
+
+	update_gostek_table();
+	load_data_files();
+	load_zip("gfx.zip");
+	update_gostek(app.gostek, 0);
+	zoom_to_fit();
+	update_canvas();
+	auto_load();
+
+	app.dom.viewport.appendChild(app.canvas);
+
+	app.canvas.addEventListener("mousedown", on_canvas_mousedown);
+	app.dom.gostek_table.addEventListener("input", on_gostek_table_change);
+	app.dom.gostek_table.addEventListener("change", on_gostek_table_change);
+	app.dom.gostek_table.addEventListener("click", on_gostek_table_click);
+	document.addEventListener("drop", on_drop);
+	document.addEventListener("dragover", function(e){ e.preventDefault(); });
+	document.addEventListener("dragenter", function(e){ e.preventDefault(); });
+	window.addEventListener("resize", on_resize);
+	window.addEventListener("beforeunload", on_beforeunload);
+
+	document.querySelector("#btn_load").addEventListener("change", on_load_gostek);
+	document.querySelector("#btn_save").addEventListener("click", on_save_gostek);
+	document.querySelector("#btn_reset").addEventListener("click", reset_gostek);
+}
+
+function on_canvas_mousedown(event)
+{
+	event.preventDefault();
+
+	var x = event.clientX;
+	var y = event.clientY;
+
+	function mouseup()
+	{
+		window.removeEventListener("mouseup", mouseup, true);
+		window.removeEventListener("mousemove", mousemove);
+	}
+
+	function mousemove(event)
+	{
+		var dx = event.clientX - x;
+		var dy = event.clientY - y;
+
+		app.view.x += dx;
+		app.view.y += dy;
+
+		x = event.clientX;
+		y = event.clientY;
+
+		redraw();
+	}
+
+	window.addEventListener("mouseup", mouseup, true);
+	window.addEventListener("mousemove", mousemove);
+}
+
+function is_checked(x)
+{
+	return typeof x === "string" ? x.charAt(1) === "•" :
+		x.textContent.charAt(1) === "•";
+}
+
+function set_checked(x, checked)
+{
+	var str = (checked ? "[•]" : "[ ]");
+
+	if (typeof x === "object")
+		x.textContent = str + x.textContent.slice(3);
+	else
+		return str + x.slice(3);
+}
+
+function on_gostek_table_click(event)
+{
+	if (!event.target.previousSibling && event.target.tagName === "TD")
+	{
+		var name = event.target.parentElement.children[1].textContent;
+		var checked = is_checked(event.target);
+
+		set_checked(event.target, !checked);
+		app.gostek.sprites[name].visible = !checked;
+
+		redraw();
+	}
+}
+
+function on_gostek_table_change(event)
+{
+	var input = event.target;
+	var cell = input.parentElement;
+	var row = cell.parentElement;
+	var cell_index = Array.prototype.indexOf.call(row.children, cell);
+	var name = row.childNodes[1].textContent;
+	var header = app.dom.gostek_table.tHead.children[0];
+	var prop = header.children[cell_index].textContent.toLowerCase();
+	var func = ([parseFloat, parseInt])[(prop.charAt(0) === "p")|0];
+	var value = func(input.value);
+
+	if (!isNaN(value))
+	{
+		app.gostek.sprites[name][prop] = value;
+		redraw();
+	}
+	else if (event.type === "change")
+	{
+		input.value = app.gostek.sprites[name][prop];
+	}
+}
+
+function reset_gostek()
+{
+	var gostek = create_gostek();
+	app.gostek.sprites = gostek.sprites;
+	update_gostek_table();
+	redraw();
+}
+
+function load_gostek(data)
+{
+	for (var id in data)
+	{
+		if ("cx" in data[id])
+			app.gostek.sprites[id].cx = data[id].cx;
+
+		if ("cy" in data[id])
+			app.gostek.sprites[id].cy = data[id].cy;
+	}
+
+	update_gostek_table();
+	redraw();
+}
+
+function on_load_gostek(event)
+{
+	var r = new FileReader();
+	r.onload = function() { load_gostek(JSON.parse(r.result)); };
+	r.readAsText(event.target.files[0]);
+}
+
+function on_save_gostek()
+{
+	var data = {};
+
+	Object.keys(app.gostek.sprites).map(function(k){
+		data[k] = {
+			cx: app.gostek.sprites[k].cx,
+			cy: app.gostek.sprites[k].cy
+		};
+	});
+
+	download("gostek.json", JSON.stringify(data));
+}
+
+function auto_load()
+{
+	var data = localStorage.getItem("gostek-autosave");
+
+	if (data)
+	{
+		data = JSON.parse(data);
+
+		if (data.gostek_sprites)
+		{
+			var props = ["p1", "p2", "cx", "cy", "visible"];
+
+			for (var i in data.gostek_sprites)
+			{
+				if (i in app.gostek.sprites)
+				{
+					props.forEach(function(k) {
+						app.gostek.sprites[i][k] = data.gostek_sprites[i][k];
+					});
+				}
+			}
+
+			update_gostek_table();
+		}
+
+		if (data.view)
+		{
+			var props = Object.keys(app.view);
+
+			for (var i = 0; i < props.length; i++)
+			{
+				if (props[i] in data.view)
+					app.view[props[i]] = data.view[props[i]];
+			}
+		}
+
+		if (data.anim)
+		{
+			app.anim.speed = data.anim.speed;
+
+			if (data.anim.current)
+			{
+				play(data.anim.current);
+
+				if (!data.anim.running)
+					stop();
+			}
+		}
+	}
+}
+
+function auto_save()
+{
+	var gostek_sprites = JSON.parse(JSON.stringify(app.gostek.sprites));
+
+	for (var name in gostek_sprites)
+		delete gostek_sprites[name].id;
+
+	localStorage.setItem("gostek-autosave", JSON.stringify({
+		"gostek_sprites": gostek_sprites,
+		"view": app.view,
+		"anim": {
+			"current": app.gostek.animation,
+			"running": app.anim.running,
+			"speed": app.anim.speed
+		}
+	}));
+}
+
+function on_beforeunload()
+{
+	auto_save();
+}
+
+function sprite(image_id, p1, p2, cx, cy, visible, flex)
+{
+	return {id: image_id, p1: p1, p2: p2, cx: cx, cy: cy,
+		visible: !!visible, flex: !!flex};
+}
+
+function create_gostek()
+{
+	var gostek = {};
+
+	gostek.sprites = {};
+	gostek.draw_list = [];
+	gostek.state = {};
+	gostek.state.team2 = false;
+	gostek.state.flip = false;
+	gostek.skeleton = null;
+	gostek.animation = null;
+	gostek.anims = {};
+
+	gostek.anims["stand"]           = { name: "stoi.poa",            speed: 3 };
+	gostek.anims["run"]             = { name: "biega.poa",           speed: 1 };
+	gostek.anims["run_back"]        = { name: "biegatyl.poa",        speed: 1 };
+	gostek.anims["jump"]            = { name: "skok.poa",            speed: 1 };
+	gostek.anims["jump_side"]       = { name: "skokwbok.poa",        speed: 1 };
+	gostek.anims["fall"]            = { name: "spada.poa",           speed: 1 };
+	gostek.anims["crouch"]          = { name: "kuca.poa",            speed: 1 };
+	gostek.anims["crouch_run"]      = { name: "kucaidzie.poa",       speed: 2 };
+	gostek.anims["reload"]          = { name: "laduje.poa",          speed: 2 };
+	gostek.anims["throw"]           = { name: "rzuca.poa",           speed: 1 };
+	gostek.anims["recoil"]          = { name: "odrzut.poa",          speed: 1 };
+	gostek.anims["small_recoil"]    = { name: "odrzut2.poa",         speed: 1 };
+	gostek.anims["shotgun"]         = { name: "shotgun.poa",         speed: 1 };
+	gostek.anims["clip_out"]        = { name: "clipout.poa",         speed: 3 };
+	gostek.anims["clip_in"]         = { name: "clipin.poa",          speed: 3 };
+	gostek.anims["slide_back"]      = { name: "slideback.poa",       speed: 2 };
+	gostek.anims["change"]          = { name: "change.poa",          speed: 1 };
+	gostek.anims["throw_weapon"]    = { name: "wyrzuca.poa",         speed: 1 };
+	gostek.anims["weapon_none"]     = { name: "bezbroni.poa",        speed: 3 };
+	gostek.anims["punch"]           = { name: "bije.poa",            speed: 1 };
+	gostek.anims["reload_bow"]      = { name: "strzala.poa",         speed: 1 };
+	gostek.anims["barret"]          = { name: "barret.poa",          speed: 9 };
+	gostek.anims["roll"]            = { name: "skokdolobrot.poa",    speed: 1 };
+	gostek.anims["roll_back"]       = { name: "skokdolobrottyl.poa", speed: 1 };
+	gostek.anims["crouch_run_back"] = { name: "kucaidzietyl.poa",    speed: 2 };
+	gostek.anims["cigar"]           = { name: "cigar.poa",           speed: 3 };
+	gostek.anims["match"]           = { name: "match.poa",           speed: 3 };
+	gostek.anims["smoke"]           = { name: "smoke.poa",           speed: 4 };
+	gostek.anims["wipe"]            = { name: "wipe.poa",            speed: 4 };
+	gostek.anims["groin"]           = { name: "krocze.poa",          speed: 2 };
+	gostek.anims["piss"]            = { name: "szcza.poa",           speed: 8 };
+	gostek.anims["mercy"]           = { name: "samo.poa",            speed: 3 };
+	gostek.anims["mercy2"]          = { name: "samo2.poa",           speed: 3 };
+	gostek.anims["take_off"]        = { name: "takeoff.poa",         speed: 2 };
+	gostek.anims["prone"]           = { name: "lezy.poa",            speed: 1 };
+	gostek.anims["victory"]         = { name: "cieszy.poa",          speed: 3 };
+	gostek.anims["aim"]             = { name: "celuje.poa",          speed: 2 };
+	gostek.anims["hands_up_aim"]    = { name: "gora.poa",            speed: 2 };
+	gostek.anims["prone_move"]      = { name: "lezyidzie.poa",       speed: 2 };
+	gostek.anims["get_up"]          = { name: "wstaje.poa",          speed: 1 };
+	gostek.anims["aim_recoil"]      = { name: "celujeodrzut.poa",    speed: 1 };
+	gostek.anims["hands_up_recoil"] = { name: "goraodrzut.poa",      speed: 1 };
+	gostek.anims["melee"]           = { name: "kolba.poa",           speed: 1 };
+	gostek.anims["own"]             = { name: "rucha.poa",           speed: 3 };
+
+	gostek_data.forEach(function(data) {
+		gostek.sprites[data[0]] = sprite.apply(null, data.slice(1));
+		gostek.draw_list.push(data[0]);
+	});
+
+	return gostek;
+}
+
+function satisfy_constraint(object, index)
+{
+	for (var i = 0, n = object.constraints.length; i < n; i++)
+	{
+		var constraint = object.constraints[i];
+
+		if (constraint.a === index || constraint.b === index)
+		{
+			var other = constraint.a === index ? constraint.b : constraint.a;
+
+			var p1 = object.points[index];
+			var p2 = object.points[other];
+			var d = distance(p1, p2);
+
+			p2.x = p1.x + constraint.L * (p2.x - p1.x) / d;
+			p2.y = p1.y + constraint.L * (p2.y - p1.y) / d;
+		}
+	}
+}
+
+function update_gostek(gostek, time)
+{
+	if (!gostek.skeleton && app.objects["gostek.po"])
+		gostek.skeleton = JSON.parse(JSON.stringify(app.objects["gostek.po"]));
+
+	if (gostek.skeleton && gostek.animation)
+	{
+		var info = gostek.anims[gostek.animation];
+		var speed = info.speed;
+		var anim = app.animations[info.name];
+
+		var f = (time * (60 / speed)) % anim.length;
+		var k0 = floor(f);
+		var k1 = (k0 + 1) % anim.length;
+		var p = f - k0;
+
+		var A = anim[k0];
+		var B = anim[k1];
+
+		for (var i = 0, n = A.length; i < n; i++)
+		{
+			var P = gostek.skeleton.points[i];
+
+			P.x = A[i].x + (B[i].x - A[i].x) * p;
+			P.y = A[i].y + (B[i].y - A[i].y) * p;
+		}
+
+		gostek.skeleton.points[21 - 1].x = gostek.skeleton.points[ 9 - 1].x;
+		gostek.skeleton.points[21 - 1].y = gostek.skeleton.points[ 9 - 1].y;
+		gostek.skeleton.points[23 - 1].x = gostek.skeleton.points[12 - 1].x;
+		gostek.skeleton.points[23 - 1].y = gostek.skeleton.points[12 - 1].y;
+		gostek.skeleton.points[22 - 1].x = 0;
+		gostek.skeleton.points[22 - 1].y = 0;
+		gostek.skeleton.points[24 - 1].x = 0;
+		gostek.skeleton.points[24 - 1].y = 0;
+
+		satisfy_constraint(gostek.skeleton, 21 - 1);
+		satisfy_constraint(gostek.skeleton, 23 - 1);
+	}
+}
+
+function redraw()
+{
+	if (!app.anim.frame_id)
+		app.anim.frame_id = requestAnimationFrame(render);
+}
+
+function zoom_to_fit()
+{
+	var w = app.dom.viewport.offsetWidth;
+	var h = app.dom.viewport.offsetHeight;
+	var b = get_object_bounds(app.gostek.skeleton);
+
+	app.view.scale = 0.5 * min(w / (b.right - b.left), h / (b.bottom - b.top));
+	app.view.x = app.view.scale * (b.left + (b.right - b.left) / 2);
+	app.view.y = -app.view.scale * (b.top + (b.bottom - b.top) / 2);
+
+	redraw();
+}
+
+function set_animation(animation)
+{
+	if (!animation || animation && !app.gostek.anims[animation])
+		animation = null;
+
+	app.gostek.animation = animation;
+
+	if (animation === null)
+	{
+		app.gostek.skeleton = null;
+		update_gostek(app.gostek, 0);
+	}
+
+	return animation;
+}
+
+function play(animation)
+{
+	app.anim.time = performance.now();
+	app.anim.running = true;
+
+	if (typeof animation === "undefined")
+		animation = app.gostek.animation;
+
+	var prev = app.gostek.animation;
+	var curr = set_animation(animation);
+
+	if (prev !== curr)
+		app.anim.elapsed = 0;
+
+	if (curr === null)
+		app.anim.running = false;
+
+	redraw();
+}
+
+function pause()
+{
+	app.anim.running = false;
+}
+
+function stop()
+{
+	update_gostek(app.gostek, 0);
+	app.anim.elapsed = 0;
+	app.anim.running = false;
+	redraw();
+}
+
+function render()
+{
+	app.anim.frame_id = null;
+
+	if (app.anim.running)
+	{
+		var time = performance.now();
+		app.anim.elapsed += (time - app.anim.time) * app.anim.speed;
+		app.anim.time = time;
+		update_gostek(app.gostek, app.anim.elapsed / 1000);
+	}
+
+	var x = 0.5 + floor(app.view.x + app.canvas.width / 2);
+	var y = 0.5 + floor(app.view.y + app.canvas.height / 2);
+
+	app.context.save();
+	app.context.clearRect(0, 0, app.canvas.width, app.canvas.height);
+	app.context.translate(x, y);
+	app.context.scale(app.view.scale, app.view.scale);
+	app.context.lineWidth = 1 / app.view.scale;
+
+	if (app.view.grid)
+		render_grid();
+
+	if (app.view.gostek)
+		render_gostek(app.gostek);
+
+	if (app.view.skeleton_lines)
+	{
+		var obj = app.gostek.skeleton;
+		var px = 1 / app.view.scale;
+
+		if (app.view.skeleton_shadow)
+			render_skeleton_lines(obj, app.theme.skeleton_shadow, px);
+
+		render_skeleton_lines(obj, app.theme.skeleton_lines, 0);
+	}
+
+	if (app.view.skeleton_points)
+		render_skeleton_points(app.gostek.skeleton);
+
+	app.context.restore();
+
+	if (app.anim.running)
+		redraw();
+}
+
+function render_gostek(gostek)
+{
+	var points = gostek.skeleton.points;
+	var context = app.context;
+
+	for (var i = 0, n = gostek.draw_list.length; i < n; i++)
+	{
+		var sprite = gostek.sprites[gostek.draw_list[i]];
+		var image = app.images[sprite.id];
+
+		if (image && image.img && sprite.visible &&
+			sprite.p1 > 0 && sprite.p1 <= points.length &&
+			sprite.p2 > 0 && sprite.p2 <= points.length)
+		{
+			var x1 = points[sprite.p1 - 1].x;
+			var y1 = points[sprite.p1 - 1].y;
+			var x2 = points[sprite.p2 - 1].x;
+			var y2 = points[sprite.p2 - 1].y;
+			var cx = sprite.cx * image.img.width;
+			var cy = sprite.cy * image.img.height;
+			var r  = atan2(y2 - y1, x2 - x1);
+			var sx = 1;
+
+			if (sprite.flex)
+			{
+				var p1 = app.objects["gostek.po"].points[sprite.p1 - 1];
+				var p2 = app.objects["gostek.po"].points[sprite.p2 - 1];
+				var d1 = sqr(p2.x - p1.x) + sqr(p2.y - p1.y);
+				var d2 = sqr(x2 - x1) + sqr(y2 - y1);
+
+				sx = sqrt(d2 / d1);
+			}
+
+			context.save();
+			context.translate(x1, y1);
+			context.scale(1 / image.scale, 1 / image.scale);
+			context.rotate(r);
+			context.scale(sx, 1);
+			context.drawImage(image.img, -cx, -cy);
+			context.restore();
+		}
+	}
+}
+
+function render_skeleton_points(object)
+{
+	var s = app.view.scale;
+
+	app.context.save();
+	app.context.font = "11px Consolas";
+	app.context.textAlign = "center";
+	app.context.strokeStyle = app.theme.point_text;
+
+	for (var i = 0, n = object.points.length; i < n; i++)
+	{
+		var x = pxl(object.points[i].x);
+		var y = pxl(object.points[i].y);
+
+		app.context.fillStyle = app.theme.point_back;
+		app.context.beginPath();
+		app.context.arc(x, y, 8 / s, 0, 2 * Math.PI, true);
+		app.context.fill();
+		app.context.stroke();
+
+		// note: firefox doesn't like drawing text with scaled canvas
+		app.context.scale(1 / s, 1 / s);
+		app.context.fillStyle = app.theme.point_text;
+		app.context.fillText((i + 1).toString(), x * s, y * s + 3);
+		app.context.scale(s, s);
+	}
+
+	app.context.restore();
+}
+
+function render_skeleton_lines(object, color, offset)
+{
+	app.context.beginPath();
+	app.context.strokeStyle = color;
+
+	for (var i = 0, n = object.constraints.length; i < n; i++)
+	{
+		var a = object.points[object.constraints[i].a];
+		var b = object.points[object.constraints[i].b];
+		app.context.moveTo(pxl(a.x) + offset, pxl(a.y) + offset);
+		app.context.lineTo(pxl(b.x) + offset, pxl(b.y) + offset);
+	}
+
+	app.context.stroke();
+}
+
+function render_grid()
+{
+	var dx = ceil(app.canvas.width / 2);
+	var dy = ceil(app.canvas.height / 2);
+	var px = pxl(0);
+	var py = pxl(0);
+
+	app.context.strokeStyle = app.theme.grid;
+	app.context.beginPath();
+	app.context.moveTo( px, -dy);
+	app.context.lineTo( px,  dy);
+	app.context.moveTo(-dx,  py);
+	app.context.lineTo( dx,  py);
+	app.context.stroke();
+}
+
+function on_resize()
+{
+	update_canvas();
+}
+
+function update_canvas()
+{
+	app.canvas.width = app.dom.viewport.offsetWidth;
+	app.canvas.height = app.dom.viewport.offsetHeight;
+
+	redraw();
+}
+
+function create_input(value)
+{
+	var input = document.createElement("input");
+	input.setAttribute("type", "text");
+	input.value = value;
+	return input;
+}
+
+function update_gostek_table()
+{
+	var tbody = document.createElement("tbody");
+
+	for (var name in app.gostek.sprites)
+	{
+		var sprite = app.gostek.sprites[name];
+		var row = document.createElement("tr");
+
+		for (var i = 0; i < 6; i++)
+			row.appendChild(document.createElement("td"));
+
+		row.childNodes[0].textContent = set_checked("", sprite.visible);
+		row.childNodes[1].textContent = name;
+		row.childNodes[2].appendChild(create_input(sprite.p1));
+		row.childNodes[3].appendChild(create_input(sprite.p2));
+		row.childNodes[4].appendChild(create_input(sprite.cx));
+		row.childNodes[5].appendChild(create_input(sprite.cy));
+
+		tbody.appendChild(row);
+	}
+
+	app.dom.gostek_table.replaceChild(tbody, app.dom.gostek_table.tBodies[0]);
+}
+
+function download_data_files()
+{
+	var data = [];
+
+	for (var key in data_files)
+		data.push(JSON.stringify(key) + ": " + JSON.stringify(data_files[key]));
+
+	data = "data_files = {\n\t" + data.join(",\n\t") + "\n};\n";
+	download("data_files.js", data);
+}
+
+function download_gostek_data()
+{
+	var rows = [];
+
+	for (var i = 0; i < app.gostek.draw_list.length; i++)
+	{
+		var id = app.gostek.draw_list[i];
+		var sprite = app.gostek.sprites[id];
+		var gfxid = gfx_ids[sprite.id] || 0;
+		var visible = +!!gostek_data[i][6];
+		var flex = 0;
+
+		if (sprite.flex)
+		{
+			var p1 = app.objects["gostek.po"].points[sprite.p1 - 1];
+			var p2 = app.objects["gostek.po"].points[sprite.p2 - 1];
+			flex = distance(p1, p2);
+		}
+
+		rows.push([
+			"{$IFDEF IDS}GOSTEK_" + id,
+			" = ",
+			i + ";{$ELSE}Def(",
+			gfxid + ", ",
+			sprite.p1 + ", ",
+			sprite.p2 + ", ",
+			sprite.cx + ", ",
+			sprite.cy + ", ",
+			visible + ", ",
+			flex.toFixed(5) + ");{$ENDIF}",
+		]);
+	}
+
+	download("GostekGfx.pas", format_columns(rows, "L RLRRRRRR").join("\n") + [
+		"", "",
+		"{$IFDEF IDS}",
+		"GOSTEK_FIRST           = GOSTEK_SECONDARY_DEAGLES;",
+		"GOSTEK_LAST            = GOSTEK_RIGHT_HAND;",
+		"GOSTEK_PRIMARY_FIRST   = GOSTEK_PRIMARY_DEAGLES;",
+		"GOSTEK_SECONDARY_FIRST = GOSTEK_SECONDARY_DEAGLES;",
+		"{$ENDIF}"
+	].join("\n") + "\n");
+}
+
+function download(filename, data)
+{
+	var blob = new Blob([data], {type: "application/octet-stream"});
+	var url = URL.createObjectURL(blob);
+	var anchor = document.createElement("a");
+
+	anchor.setAttribute("href", url);
+	anchor.setAttribute("download", filename);
+	anchor.click();
+}
+
+function format_columns(rows, align)
+{
+	if (rows.length === 0)
+		return [];
+
+	var L = rows[0].map(function(col){return col.length;});
+
+	for (var i = 1, n = rows.length, m = L.length; i < n; i++)
+	{
+		for (var j = 0; j < m; j++)
+			L[j] = max(L[j], rows[i][j].length);
+	}
+
+	return rows.map(function(row)
+	{
+		return row.map(function(col, index)
+		{
+			switch (align[index])
+			{
+				case "L": return col + " ".repeat(L[index] - col.length);
+				case "R": return " ".repeat(L[index] - col.length) + col;
+				case " ": return col;
+			}
+		}).join("");
+	});
+}
+
+function on_drop(event)
+{
+	event.preventDefault();
+
+	var files = event.dataTransfer.files;
+
+	function on_file_load(reader, filename) {
+		data_files[filename] = reader.result;
+		load_file(filename);
+	}
+
+	for (var i = 0; i < files.length; i++)
+	{
+		var name = files[i].name.toLowerCase();
+		var ext = name.split(".").pop();
+
+		if (ext === "po" || ext === "poa")
+		{
+			var reader = new FileReader();
+			reader.onload = on_file_load.bind(null, reader, name);
+			reader.readAsText(files[i]);
+		}
+		else if (ext === "zip")
+		{
+			load_zip(files[i]);
+		}
+	}
+
+	if ('getFilesAndDirectories' in event.dataTransfer)
+	{
+		console.log("Folder dropping for Firefox not implemented.");
+	}
+	else if ('items' in event.dataTransfer &&
+		event.dataTransfer.items.length > 0 &&
+		'webkitGetAsEntry' in event.dataTransfer.items[0])
+	{
+		var filelist = {};
+		var recursion_count = 0;
+
+		function check_done()
+		{
+			if (--recursion_count === 0)
+				reload_images(filelist);
+		}
+
+		function read_entries(path, entries)
+		{
+			for (var i = 0; i < entries.length; i++)
+			{
+				console.log();
+
+				if (entries[i].isFile)
+				{
+					recursion_count++;
+
+					entries[i].file(function(f) {
+						filelist[path + f.name] = f;
+						check_done();
+					});
+				}
+				else if (entries[i].isDirectory)
+				{
+					recursion_count++;
+
+					var r = entries[i].createReader();
+					var name = entries[i].name.toLowerCase();
+					r.readEntries(read_entries.bind(null, path + name + "/"));
+				}
+			}
+
+			check_done();
+		}
+
+		for (var i = 0; i < event.dataTransfer.items.length; i++)
+		{
+			var item = event.dataTransfer.items[i].webkitGetAsEntry();
+			var name = item.name.toLowerCase();
+
+			if (item.isDirectory && (name === 'gostek-gfx' || name === 'weapons-gfx'))
+			{
+				recursion_count++;
+
+				var r = item.createReader();
+				r.readEntries(read_entries.bind(null, name + "/"));
+			}
+		}
+	}
+}
+
+function load_zip(data)
+{
+	if (typeof data === "string")
+	{
+		var req = new XMLHttpRequest();
+		req.onload = function() { load_zip(req.response); };
+		req.open("GET", "gfx.zip");
+		req.responseType = "arraybuffer";
+		req.send();
+	}
+	else
+	{
+		function create_zip(data)
+		{
+			var zip = new JSZip(data);
+			var first = Object.keys(zip.files)[0];
+			var root = first.slice(0, first.indexOf("/") + 1);
+			var list = {};
+
+			for (var name in zip.files)
+			{
+				var entry = zip.files[name];
+
+				if (!entry.dir)
+				{
+					var path = name.slice(root.length);
+					var dir = path.slice(0, path.indexOf("/"));
+
+					if (dir === "gostek-gfx" || dir === "weapons-gfx")
+						list[path] = new Blob([entry.asArrayBuffer()]);
+				}
+			}
+
+			reload_images(list);
+		}
+
+		if (!(data instanceof ArrayBuffer))
+		{
+			var r = new FileReader();
+			r.onload = function() { create_zip(r.result); };
+			r.readAsArrayBuffer(data);
+		}
+		else
+		{
+			create_zip(data);
+		}
+	}
+}
+
+function reload_images(file_list)
+{
+	var ext = ["png", "bmp"];
+
+	var image_list = Object.keys(file_list)
+		.filter(function(name) { return ext.indexOf(name.split(".").pop()) !== -1; })
+		.map(function(name) { return name.slice(0, -4); })
+		.filter(function(x, i, self) { return self.indexOf(x) === i; });
+
+	var scale_files = {};
+
+	function get_image_scale(image, callback)
+	{
+		var pos = image.lastIndexOf("/");
+		var scale_file = image.slice(0, pos) + "/scale.ini";
+		var scale_entry = image.slice(pos + 1, -4);
+
+		function find_scale()
+		{
+			var data = scale_files[scale_file];
+			var result = 1;
+
+			if (scale_entry in data)
+				result = parseFloat(data[scale_entry]);
+			else if ("defaultscale" in data)
+				result = parseFloat(data["defaultscale"]);
+
+			return isNaN(result) ? 1 : result;
+		}
+
+		if (scale_file in scale_files)
+		{
+			callback(find_scale());
+		}
+		else if (scale_file in file_list)
+		{
+			var r = new FileReader();
+
+			r.onload = function() {
+				scale_files[scale_file] = load_ini(r.result).scale || {};
+				callback(find_scale());
+			};
+
+			r.readAsText(file_list[scale_file]);
+		}
+		else
+		{
+			callback(1);
+		}
+	}
+
+	for (var i = 0, n = image_list.length; i < n; i++)
+	{
+		var name = image_list[i] + ".png";
+		name = name in file_list ? name : image_list[i] + ".bmp";
+
+		get_image_scale(name, function(name, scale) {
+			var r = new FileReader();
+
+			r.onload = function() {
+				var id = name.slice(0, -4);
+				var img = new Image();
+
+				app.images[id] = app.images[id] || {};
+				app.images[id].scale = scale;
+				app.images[id].img = null;
+
+				img.onload = function() {
+					app.images[id].img = img;
+					redraw();
+				};
+
+				img.src = r.result;
+			};
+
+			r.readAsDataURL(file_list[name]);
+		}.bind(null, name));
+	}
+}
+
+function load_data_files()
+{
+	for (var name in data_files)
+		load_file(name, data_files[name]);
+}
+
+function load_file(name)
+{
+	try
+	{
+		var ext = name.split(".").pop();
+
+		switch (ext)
+		{
+			case "po":
+				app.objects[name] = load_object(data_files[name], 3);
+				break;
+
+			case "poa":
+				app.animations[name] = load_animation(data_files[name]);
+				break;
+		}
+	}
+	catch (e)
+	{
+		console.error("Failed to load file " + name);
+	}
+}
+
+function get_object_bounds(object)
+{
+	bounds = {left: 0, top: 0, right: 0, bottom: 0};
+
+	if (object.points.length > 0)
+	{
+		bounds.left = bounds.right = object.points[0].x;
+		bounds.top = bounds.bottom = object.points[0].y;
+	}
+
+	for (var i = 1, n = object.points.length; i < n; i++)
+	{
+		bounds.left   = min(object.points[i].x, bounds.left);
+		bounds.top    = min(object.points[i].y, bounds.top);
+		bounds.right  = max(object.points[i].x, bounds.right);
+		bounds.bottom = max(object.points[i].y, bounds.bottom);
+	}
+
+	return bounds;
+}
+
+function load_object(str, scale)
+{
+	str = str.replace(/\r\n/g, "\n");
+	str = str.split(/^ENDFILE$/m)[0].trim();
+	str = str.split(/^CONSTRAINTS$/m);
+
+	var points_data = str[0].trim().split("\n");
+	var constraints_data = str[1].trim().split("\n");
+
+	var points = [];
+	var constraints = [];
+
+	for (var i = 0, n = points_data.length; i < n; i += 4)
+	{
+		points.push({
+			x: -scale * parseFloat(points_data[i + 1]) / 1.2,
+			y: -scale * parseFloat(points_data[i + 3])
+		});
+	}
+
+	for (var i = 0, n = constraints_data.length; i < n; i += 2)
+	{
+		var a = parseInt(constraints_data[i + 0].substr(1)) - 1;
+		var b = parseInt(constraints_data[i + 1].substr(1)) - 1;
+
+		constraints.push({
+			"a": a,
+			"b": b,
+			"L": distance(points[a], points[b])
+		});
+	}
+
+	return {
+		"points": points,
+		"constraints": constraints
+	};
+}
+
+function load_animation(str)
+{
+	str = str.replace(/\r\n/g, "\n");
+	str = str.split(/^ENDFILE$/m)[0].trim();
+
+	return str.split(/^NEXTFRAME$/m).map(function(f) {
+		var frame = [];
+
+		f.match(/(?:.+(?:\n|$)){4}/g).forEach(function(p) {
+			var lines = p.trim().split("\n");
+			var index = parseInt(lines.shift(), 10);
+			var coords = lines.map(parseFloat);
+
+			frame[index - 1] = {
+				x: -3 * coords[0] / 1.1,
+				y: -3 * coords[2]
+			};
+		});
+
+		return frame;
+	});
+}
+
+function load_ini(str)
+{
+	var lines = str.replace(/\r\n/g, "\n").split("\n");
+	var sections = {};
+	var current = null;
+	var pos = 0;
+
+	for (var i = 0, n = lines.length; i < n; i++)
+	{
+		if (lines[i].length > 0)
+		{
+			if (lines[i].charAt(0) === "[")
+			{
+				if (lines[i].slice(-1) === "]")
+				{
+					current = lines[i].slice(1, -1).toLowerCase();
+					sections[current] = sections[current] || {};
+				}
+			}
+			else if (current !== null && (pos = lines[i].indexOf("=")) !== -1)
+			{
+				var key = lines[i].slice(0, pos).toLowerCase();
+				var val = lines[i].slice(pos + 1);
+				sections[current][key] = val;
+			}
+		}
+	}
+
+	return sections;
+}
+
+// fuck the "Math" object in the ass
+function min(a, b) { return Math.min(a, b); }
+function max(a, b) { return Math.max(a, b); }
+function floor(x) { return Math.floor(x); }
+function ceil(x) { return Math.ceil(x); }
+function atan2(y, x) { return Math.atan2(y, x); }
+function sqrt(x) { return Math.sqrt(x); }
+function sqr(x) { return x * x; }
+function distance(a, b) { return sqrt(sqr(b.x - a.x) + sqr(b.y - a.y)); }
+function pxl(x) { return floor(x * app.view.scale) / app.view.scale; }
+
+</script>
+</body>
+</html>
