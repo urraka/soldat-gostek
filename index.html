@@ -15,8 +15,8 @@ body {font:11px/1.2 Consolas,monospace;}
 canvas {display:block;}
 input[type="text"] {padding:0;margin:0;border:0;font:inherit;text-align:inherit;}
 input[type="text"] {outline:none;background:transparent;}
-button, label {font:inherit;border:0;background:transparent;cursor:pointer;}
-button, label {outline:0;padding:0;line-height:24px;}
+button,label {font:inherit;border:0;background:transparent;cursor:pointer;}
+button,label {outline:0;padding:0;line-height:24px;}
 button::after,button::before {content:"\00A0";}
 label::after,label::before {content:"\00A0";}
 button:hover::before,label:hover::before {content:"[";}
@@ -41,6 +41,7 @@ input[type="file"] {position:absolute;opacity:0;bottom:100%;outline:0;}
 /* colors */
 .light {color:#333;background:#EEE;}
 .light ::-webkit-scrollbar-thumb {background-color:rgba(0,0,0,0.25);}
+.light ::-webkit-scrollbar-thumb:hover {background-color:rgba(0,0,0,0.375);}
 .light #right_panel {background:#FFF;border-color:#CCC;}
 .light #right_panel tr > *, .light #right_panel_head {border-color:#DDD;}
 .light #right_panel tr:nth-child(even) {background:#F8F8F8;}
@@ -137,6 +138,8 @@ function initialize()
 	update_gostek(app.gostek, 0);
 	zoom_to_fit();
 	update_canvas();
+	play("stand");
+	stop();
 	auto_load();
 
 	app.dom.viewport.appendChild(app.canvas);
