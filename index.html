@@ -897,11 +897,18 @@ function download(filename, data)
 {
 	var blob = new Blob([data], {type: "application/octet-stream"});
 	var url = URL.createObjectURL(blob);
-	var anchor = document.createElement("a");
 
-	anchor.setAttribute("href", url);
-	anchor.setAttribute("download", filename);
-	anchor.click();
+	if (navigator.userAgent.toLowerCase().indexOf('firefox') > -1)
+	{
+		window.open(url);
+	}
+	else
+	{
+		var anchor = document.createElement("a");
+		anchor.setAttribute("href", url);
+		anchor.setAttribute("download", filename);
+		anchor.click();
+	}
 }
 
 function format_columns(rows, align)
