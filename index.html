@@ -13,17 +13,21 @@
 html,body {margin:0;padding:0;width:100%;height:100%;overflow:hidden;}
 body {font:11px/1.2 Consolas,monospace;}
 canvas {display:block;}
-input[type="text"] {padding:0;margin:0;border:0;font:inherit;text-align:inherit;}
-input[type="text"] {outline:none;background:transparent;}
+input,select {font:inherit;text-align:inherit;outline:none;}
+input[type="text"] {padding:0;margin:0;border:0;background:transparent;}
 button,label {font:inherit;border:0;background:transparent;cursor:pointer;}
 button,label {outline:0;padding:0;line-height:24px;}
 button::after,button::before {content:"\00A0";}
 label::after,label::before {content:"\00A0";}
-button:hover::before,label:hover::before {content:"[";}
-button:hover::after,label:hover::after {content:"]";}
+#right_panel button:hover::before,label:hover::before {content:"[";}
+#right_panel button:hover::after,label:hover::after {content:"]";}
 label {overflow:hidden;}
 input[type="file"] {position:absolute;opacity:0;bottom:100%;outline:0;}
 #editor {position:absolute;left:0;right:0;top:0;bottom:0;display:flex;cursor:default;}
+#left_panel {flex:1;display:flex;flex-flow:column;}
+#left_panel_foot {flex:0 0 auto;height:24px;line-height:24px;border-bottom:1px solid;}
+#left_panel_foot {padding:0 5px;}
+#left_panel_foot input[type="text"] {text-align:right;}
 #viewport {flex:1;}
 #right_panel {width:400px;border-left:1px solid;display:flex;flex-flow:column;}
 #right_panel_head {height:24px;border-bottom:1px solid;flex:0 0 auto;padding:0 5px;}
@@ -38,23 +42,50 @@ input[type="file"] {position:absolute;opacity:0;bottom:100%;outline:0;}
 #right_panel td:first-child {-moz-user-select:-moz-none;-webkit-user-select:none;}
 #right_panel td:first-child {user-select:none;}
 
+.anim {display:none;}
+.play {display:inline-block;width:0;height:0;border-style:solid;
+       border-width:4px 0 4px 6.9px;border-color:transparent;}
+.pause {display:inline-block;width:2px;height:8px;border-style:solid;
+        border-width:0 2px 0 2px;border-color:transparent;}
+.stop {display:inline-block;width:8px;height:8px;}
+
 /* colors */
 .light {color:#333;background:#EEE;}
 .light ::-webkit-scrollbar-thumb {background-color:rgba(0,0,0,0.25);}
 .light ::-webkit-scrollbar-thumb:hover {background-color:rgba(0,0,0,0.375);}
 .light #right_panel {background:#FFF;border-color:#CCC;}
+.light #left_panel_foot {background:#FFF;border-color:#CCC;}
 .light #right_panel tr > *, .light #right_panel_head {border-color:#DDD;}
 .light #right_panel tr:nth-child(even) {background:#F8F8F8;}
 .light #right_panel thead {background:#F8F8F8;}
 .light button, .light label {color:#777;}
 .light button:hover, .light label:hover {color:#000;}
+.light .play {border-left-color:#777;}
+.light *:hover > .play {border-left-color:#000;}
+.light .pause {border-color:#777;}
+.light *:hover > .pause {border-color:#000;}
+.light .stop {background-color:#777;}
+.light *:hover > .stop {background-color:#000;}
+.light #anim_speed + span {color:initial;}
 
 </style>
 </head>
 <body>
 
 <div id="editor" class="light">
-	<div id="viewport"></div>
+	<div id="left_panel">
+		<div id="left_panel_foot">
+			<div class="anim">
+				Animation:
+				<select id="anim_list"></select>
+				<button id="btn_play"><span class="play"/></button>
+				<button id="btn_pause"><span class="pause"/></button>
+				<button id="btn_stop"><span class="stop"/></button>
+				<input id="anim_speed" type="text" value="100" size="3"><span>%</span>
+			</div>
+		</div>
+		<div id="viewport"></div>
+	</div>
 	<div id="right_panel">
 		<div id="right_panel_head">
 			<label><input id="btn_load" type="file">Load</label>
@@ -100,6 +131,7 @@ function initialize()
 	app.dom.root = document.querySelector("#editor");
 	app.dom.viewport = document.querySelector("#viewport");
 	app.dom.gostek_table = document.querySelector("#right_panel table");
+	app.dom.anim_list = document.querySelector("#anim_list");
 
 	app.canvas = document.createElement("canvas");
 	app.context = app.canvas.getContext("2d");
@@ -138,10 +170,20 @@ function initialize()
 	update_gostek(app.gostek, 0);
 	zoom_to_fit();
 	update_canvas();
+
+	for (name in app.gostek.anims)
+	{
+		var option = document.createElement("option");
+		option.textContent = name;
+		option.setAttribute("value", name);
+		app.dom.anim_list.appendChild(option);
+	}
+
 	play("stand");
 	stop();
 	auto_load();
 
+	document.querySelector(".anim").style.display = "block";
 	app.dom.viewport.appendChild(app.canvas);
 
 	app.canvas.addEventListener("mousedown", on_canvas_mousedown);
@@ -154,9 +196,37 @@ function initialize()
 	window.addEventListener("resize", on_resize);
 	window.addEventListener("beforeunload", on_beforeunload);
 
+	app.dom.anim_list.addEventListener("change", on_anim_change);
 	document.querySelector("#btn_load").addEventListener("change", on_load_gostek);
 	document.querySelector("#btn_save").addEventListener("click", on_save_gostek);
 	document.querySelector("#btn_reset").addEventListener("click", reset_gostek);
+	document.querySelector("#btn_play").addEventListener("click", on_anim_play);
+	document.querySelector("#btn_pause").addEventListener("click", on_anim_pause);
+	document.querySelector("#btn_stop").addEventListener("click", on_anim_stop);
+	document.querySelector("#anim_speed").addEventListener("input", on_anim_speed);
+	document.querySelector("#anim_speed").addEventListener("change", on_anim_speed);
+}
+
+function on_anim_speed(event)
+{
+	var value = parseFloat(event.target.value);
+
+	if (!isNaN(value))
+		app.anim.speed = value / 100;
+	else if (event.type === "change")
+		event.target.value = app.anim.speed * 100;
+}
+
+function on_anim_play() {play();}
+function on_anim_pause() {pause();}
+function on_anim_stop() {stop();}
+
+function on_anim_change(event)
+{
+	var value = app.dom.anim_list.options[app.dom.anim_list.selectedIndex].value;
+
+	if (value !== app.gostek.animation)
+		set_animation(value);
 }
 
 function on_canvas_mousedown(event)
@@ -326,6 +396,8 @@ function auto_load()
 		if (data.anim)
 		{
 			app.anim.speed = data.anim.speed;
+
+			document.querySelector("#anim_speed").value = 100 * app.anim.speed;
 
 			if (data.anim.current)
 			{
@@ -524,6 +596,11 @@ function set_animation(animation)
 	{
 		app.gostek.skeleton = null;
 		update_gostek(app.gostek, 0);
+	}
+	else
+	{
+		var list = app.dom.anim_list;
+		list.querySelector('[value="' + animation + '"]').selected = true;
 	}
 
 	return animation;
