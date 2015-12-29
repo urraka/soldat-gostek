@@ -438,7 +438,7 @@ function auto_load()
 
 		if (data.gostek_sprites)
 		{
-			var props = ["p1", "p2", "cx", "cy", "visible"];
+			var props = ["cx", "cy", "visible"];
 
 			for (var i in data.gostek_sprites)
 			{
@@ -486,7 +486,13 @@ function auto_save()
 	var gostek_sprites = JSON.parse(JSON.stringify(app.gostek.sprites));
 
 	for (var name in gostek_sprites)
-		delete gostek_sprites[name].id;
+	{
+		gostek_sprites[name] = {
+			cx: gostek_sprites[name].cx,
+			cy: gostek_sprites[name].cy,
+			visible: gostek_sprites[name].visible
+		};
+	}
 
 	localStorage.setItem("gostek-autosave", JSON.stringify({
 		"gostek_sprites": gostek_sprites,
@@ -507,7 +513,8 @@ function on_beforeunload()
 function sprite(image_id, p1, p2, cx, cy, visible, flex, flip, team)
 {
 	return {id: image_id, p1: p1, p2: p2, cx: cx, cy: cy,
-		visible: !!visible, flex: !!flex, flip: !!flip, team: !!team};
+		visible: !!visible, flex: !!flex, flip: !!flip,
+		team: !!team, base: !!visible};
 }
 
 function create_gostek()
@@ -793,7 +800,7 @@ function render_gostek(gostek)
 				var d1 = sqr(p2.x - p1.x) + sqr(p2.y - p1.y);
 				var d2 = sqr(x2 - x1) + sqr(y2 - y1);
 
-				sx = sqrt(d2 / d1);
+				sx = min(2, sqrt(d2 / d1));
 			}
 
 			context.save();
@@ -951,7 +958,6 @@ function download_gostek_data()
 		var id = app.gostek.draw_list[i];
 		var sprite = app.gostek.sprites[id];
 		var gfxid = gfx_ids[sprite.id] || 0;
-		var visible = +!!gostek_data[i][6];
 		var flex = 0;
 
 		if (sprite.flex)
@@ -970,7 +976,7 @@ function download_gostek_data()
 			sprite.p2 + ", ",
 			sprite.cx + ", ",
 			sprite.cy + ", ",
-			visible + ", ",
+			+!!sprite.base + ", ",
 			+!!sprite.flip + ", ",
 			+!!sprite.team + ", ",
 			flex.toFixed(5) + ");{$ENDIF}",
