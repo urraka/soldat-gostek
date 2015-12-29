@@ -37,6 +37,7 @@ input[type="file"] {position:absolute;opacity:0;bottom:100%;outline:0;}
 #right_panel th {border-top:0;padding:5px;}
 #right_panel th:nth-child(n+3) {width:40px;}
 #right_panel td:nth-child(n+3) {text-align:right;padding:0;}
+#right_panel td:nth-child(n+3):nth-child(-n+4) {padding:2px 5px;}
 #right_panel input[type="text"] {padding:2px 5px;width:40px;}
 #right_panel td:first-child {-moz-user-select:-moz-none;-webkit-user-select:none;}
 #right_panel td:first-child {user-select:none;}
@@ -917,8 +918,10 @@ function update_gostek_table()
 
 		row.childNodes[0].textContent = set_checked("", sprite.visible);
 		row.childNodes[1].textContent = name;
-		row.childNodes[2].appendChild(create_input(sprite.p1));
-		row.childNodes[3].appendChild(create_input(sprite.p2));
+		row.childNodes[2].textContent = sprite.p1;
+		row.childNodes[3].textContent = sprite.p2;
+		// row.childNodes[2].appendChild(create_input(sprite.p1));
+		// row.childNodes[3].appendChild(create_input(sprite.p2));
 		row.childNodes[4].appendChild(create_input(sprite.cx));
 		row.childNodes[5].appendChild(create_input(sprite.cy));
 
