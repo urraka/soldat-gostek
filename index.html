@@ -24,8 +24,8 @@ label {overflow:hidden;}
 input[type="file"] {position:absolute;opacity:0;bottom:100%;outline:0;}
 #editor {position:absolute;left:0;right:0;top:0;bottom:0;display:flex;cursor:default;}
 #left_panel {flex:1;display:flex;flex-flow:column;}
-#left_panel_head {flex:0 0 auto;height:24px;line-height:24px;border-bottom:1px solid;}
-#left_panel_head {padding:0 5px;}
+#left_panel_head {flex:0 0 auto;line-height:24px;border-bottom:1px solid;}
+#left_panel_head {padding:0 5px;z-index:10;}
 #left_panel_head input[type="text"] {text-align:right;}
 #viewport {flex:1;}
 #right_panel {width:400px;border-left:1px solid;display:flex;flex-flow:column;}
@@ -92,12 +92,12 @@ input[type="file"] {position:absolute;opacity:0;bottom:100%;outline:0;}
 				<input id="anim_speed" type="text" value="100" size="3"><span>%</span>
 				<span class="divisor"></span>
 				<label>Gostek&nbsp;</label>
-				<span class="checkbox" id="btn_sprites">[ ] Sprites</span>&nbsp;
-				<span class="checkbox" id="btn_points">[ ] Points</span>&nbsp;
-				<span class="checkbox" id="btn_lines">[ ] Lines</span>&nbsp;
-				<span class="checkbox" id="btn_chain">[ ] Chain</span>&nbsp;
-				<span class="checkbox" id="btn_dreadlocks">[ ] Dreadlocks</span>&nbsp;
-				<span class="checkbox" id="btn_flip">[ ] Flip</span>
+				<span class="checkbox" id="btn_sprites">[ ]&nbsp;Sprites</span>&nbsp;
+				<span class="checkbox" id="btn_points">[ ]&nbsp;Points</span>&nbsp;
+				<span class="checkbox" id="btn_lines">[ ]&nbsp;Lines</span>&nbsp;
+				<span class="checkbox" id="btn_chain">[ ]&nbsp;Chain</span>&nbsp;
+				<span class="checkbox" id="btn_dreadlocks">[ ]&nbsp;Dreadlocks</span>&nbsp;
+				<span class="checkbox" id="btn_flip">[ ]&nbsp;Flip</span>
 				<span class="divisor"></span>
 				<label>Zoom&nbsp;</label>
 				<button class="bracket" id="btn_zoom_auto">Auto</button>
