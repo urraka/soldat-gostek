@@ -96,7 +96,8 @@ input[type="file"] {position:absolute;opacity:0;bottom:100%;outline:0;}
 				<span class="checkbox" id="btn_points">[ ] Points</span>&nbsp;
 				<span class="checkbox" id="btn_lines">[ ] Lines</span>&nbsp;
 				<span class="checkbox" id="btn_chain">[ ] Chain</span>&nbsp;
-				<span class="checkbox" id="btn_dredlocks">[ ] Dredlocks</span>
+				<span class="checkbox" id="btn_dredlocks">[ ] Dredlocks</span>&nbsp;
+				<span class="checkbox" id="btn_flip">[ ] Flip</span>
 				<span class="divisor"></span>
 				<label>Zoom&nbsp;</label>
 				<button class="bracket" id="btn_zoom_auto">Auto</button>
@@ -167,6 +168,7 @@ function initialize()
 	app.view.skeleton_lines = true;
 	app.view.skeleton_points = true;
 	app.view.skeleton_shadow = true;
+	app.view.flip_gostek = false;
 
 	app.anim = {};
 	app.anim.time = 0;
@@ -210,6 +212,7 @@ function initialize()
 	set_checked(document.querySelector("#btn_lines"), app.view.skeleton_lines);
 	set_checked(document.querySelector("#btn_chain"), app.view.gostek_chain);
 	set_checked(document.querySelector("#btn_dredlocks"), app.view.gostek_dredlocks);
+	set_checked(document.querySelector("#btn_flip"), app.view.flip_gostek);
 
 	document.querySelector("#controls").style.display = "block";
 	app.dom.viewport.appendChild(app.canvas);
@@ -290,6 +293,10 @@ function on_checkbox(event)
 
 		case "btn_dredlocks":
 			app.view.gostek_dredlocks = is_checked(event.target);
+			break;
+
+		case "btn_flip":
+			app.view.flip_gostek = is_checked(event.target);
 			break;
 	}
 
@@ -525,7 +532,6 @@ function create_gostek()
 	gostek.draw_list = [];
 	gostek.state = {};
 	gostek.state.team2 = false;
-	gostek.state.flip = false;
 	gostek.skeleton = null;
 	gostek.animation = null;
 	gostek.anims = {};
@@ -768,11 +774,20 @@ function render_gostek(gostek)
 {
 	var points = gostek.skeleton.points;
 	var context = app.context;
+	var flip = app.view.flip_gostek ? -1 : 1;
 
 	for (var i = 0, n = gostek.draw_list.length; i < n; i++)
 	{
 		var sprite = gostek.sprites[gostek.draw_list[i]];
 		var image = app.images[sprite.id];
+
+		if (flip === -1 && sprite.flip)
+		{
+			if ((sprite.id + "2") in app.images)
+				image = app.images[sprite.id + "2"];
+			else
+				image = app.images[sprite.id + "-2"];
+		}
 
 		if (image && image.img && sprite.visible &&
 			sprite.p1 > 0 && sprite.p1 <= points.length &&
@@ -784,14 +799,35 @@ function render_gostek(gostek)
 			if (!app.view.gostek_dredlocks && max(sprite.p1, sprite.p2) === 24)
 				continue;
 
-			var x1 = points[sprite.p1 - 1].x;
+			var x1 = points[sprite.p1 - 1].x * flip;
 			var y1 = points[sprite.p1 - 1].y;
-			var x2 = points[sprite.p2 - 1].x;
+			var x2 = points[sprite.p2 - 1].x * flip;
 			var y2 = points[sprite.p2 - 1].y;
-			var cx = sprite.cx * image.img.width;
-			var cy = sprite.cy * image.img.height;
+			var cx = 0;
+			var cy = 0;
 			var r  = atan2(y2 - y1, x2 - x1);
 			var sx = 1;
+			var sy = 1;
+
+			if (flip === -1)
+			{
+				if (sprite.flip)
+				{
+					cx = sprite.cx * image.img.width;
+					cy = (1 - sprite.cy) * image.img.height;
+				}
+				else
+				{
+					sy = -1;
+					cx = sprite.cx * image.img.width;
+					cy = sprite.cy * image.img.height;
+				}
+			}
+			else
+			{
+				cx = sprite.cx * image.img.width;
+				cy = sprite.cy * image.img.height;
+			}
 
 			if (sprite.flex)
 			{
@@ -807,7 +843,7 @@ function render_gostek(gostek)
 			context.translate(x1, y1);
 			context.scale(1 / image.scale, 1 / image.scale);
 			context.rotate(r);
-			context.scale(sx, 1);
+			context.scale(sx, sy);
 			context.drawImage(image.img, -cx, -cy);
 			context.restore();
 		}
@@ -817,6 +853,7 @@ function render_gostek(gostek)
 function render_skeleton_points(object)
 {
 	var s = app.view.scale;
+	var flip = app.view.flip_gostek ? -1 : 1;
 
 	app.context.save();
 	app.context.font = "11px Consolas";
@@ -831,7 +868,7 @@ function render_skeleton_points(object)
 		if (!app.view.gostek_dredlocks && (i + 1 === 23 || i + 1 === 24))
 			continue;
 
-		var x = pxl(object.points[i].x);
+		var x = pxl(object.points[i].x) * flip;
 		var y = pxl(object.points[i].y);
 
 		app.context.fillStyle = app.theme.point_back;
@@ -852,6 +889,8 @@ function render_skeleton_points(object)
 
 function render_skeleton_lines(object, color, offset)
 {
+	var flip = app.view.flip_gostek ? -1 : 1;
+
 	app.context.beginPath();
 	app.context.strokeStyle = color;
 
@@ -867,8 +906,8 @@ function render_skeleton_lines(object, color, offset)
 
 		var a = object.points[object.constraints[i].a];
 		var b = object.points[object.constraints[i].b];
-		app.context.moveTo(pxl(a.x) + offset, pxl(a.y) + offset);
-		app.context.lineTo(pxl(b.x) + offset, pxl(b.y) + offset);
+		app.context.moveTo(pxl(a.x) * flip + offset, pxl(a.y) + offset);
+		app.context.lineTo(pxl(b.x) * flip + offset, pxl(b.y) + offset);
 	}
 
 	app.context.stroke();
