@@ -96,7 +96,7 @@ input[type="file"] {position:absolute;opacity:0;bottom:100%;outline:0;}
 				<span class="checkbox" id="btn_points">[ ] Points</span>&nbsp;
 				<span class="checkbox" id="btn_lines">[ ] Lines</span>&nbsp;
 				<span class="checkbox" id="btn_chain">[ ] Chain</span>&nbsp;
-				<span class="checkbox" id="btn_dredlocks">[ ] Dredlocks</span>&nbsp;
+				<span class="checkbox" id="btn_dreadlocks">[ ] Dreadlocks</span>&nbsp;
 				<span class="checkbox" id="btn_flip">[ ] Flip</span>
 				<span class="divisor"></span>
 				<label>Zoom&nbsp;</label>
@@ -164,7 +164,7 @@ function initialize()
 	app.view.grid = true;
 	app.view.gostek = true;
 	app.view.gostek_chain = true;
-	app.view.gostek_dredlocks = true;
+	app.view.gostek_dreadlocks = true;
 	app.view.skeleton_lines = true;
 	app.view.skeleton_points = true;
 	app.view.skeleton_shadow = true;
@@ -211,7 +211,7 @@ function initialize()
 	set_checked(document.querySelector("#btn_points"), app.view.skeleton_points);
 	set_checked(document.querySelector("#btn_lines"), app.view.skeleton_lines);
 	set_checked(document.querySelector("#btn_chain"), app.view.gostek_chain);
-	set_checked(document.querySelector("#btn_dredlocks"), app.view.gostek_dredlocks);
+	set_checked(document.querySelector("#btn_dreadlocks"), app.view.gostek_dreadlocks);
 	set_checked(document.querySelector("#btn_flip"), app.view.flip_gostek);
 
 	document.querySelector("#controls").style.display = "block";
@@ -291,8 +291,8 @@ function on_checkbox(event)
 			app.view.gostek_chain = is_checked(event.target);
 			break;
 
-		case "btn_dredlocks":
-			app.view.gostek_dredlocks = is_checked(event.target);
+		case "btn_dreadlocks":
+			app.view.gostek_dreadlocks = is_checked(event.target);
 			break;
 
 		case "btn_flip":
@@ -796,7 +796,7 @@ function render_gostek(gostek)
 			if (!app.view.gostek_chain && max(sprite.p1, sprite.p2) === 22)
 				continue;
 
-			if (!app.view.gostek_dredlocks && max(sprite.p1, sprite.p2) === 24)
+			if (!app.view.gostek_dreadlocks && max(sprite.p1, sprite.p2) === 24)
 				continue;
 
 			var x1 = points[sprite.p1 - 1].x * flip;
@@ -865,7 +865,7 @@ function render_skeleton_points(object)
 		if (!app.view.gostek_chain && (i + 1 === 21 || i + 1 === 22))
 			continue;
 
-		if (!app.view.gostek_dredlocks && (i + 1 === 23 || i + 1 === 24))
+		if (!app.view.gostek_dreadlocks && (i + 1 === 23 || i + 1 === 24))
 			continue;
 
 		var x = pxl(object.points[i].x) * flip;
@@ -901,7 +901,7 @@ function render_skeleton_lines(object, color, offset)
 		if (!app.view.gostek_chain && j === 22)
 			continue;
 
-		if (!app.view.gostek_dredlocks && j === 24)
+		if (!app.view.gostek_dreadlocks && j === 24)
 			continue;
 
 		var a = object.points[object.constraints[i].a];
