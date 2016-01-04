@@ -170,6 +170,15 @@ function initialize()
 	app.view.skeleton_shadow = true;
 	app.view.flip_gostek = false;
 
+	app.view.gostek_colors = {
+		"MAIN":      "#FF0000",
+		"PANTS":     "#0000FF",
+		"SKIN":      "#E6B478",
+		"HAIR":      "#FFFF00",
+		"CYGAR":     "#FFFFFF",
+		"HEADBLOOD": "#ACA9A8"
+	};
+
 	app.anim = {};
 	app.anim.time = 0;
 	app.anim.elapsed = 0;
@@ -856,12 +865,53 @@ function render_gostek(gostek)
 				sx = min(2, sqrt(d2 / d1));
 			}
 
+			var img = image.img;
+
+			if (sprite.color !== "NONE")
+			{
+				var color = app.view.gostek_colors[sprite.color];
+
+				if (!image.colored)
+				{
+					image.colored = document.createElement("canvas");
+					image.colored.width = image.img.width;
+					image.colored.height = image.img.height;
+				}
+
+				if (!image.colored.color || image.colored.color !== color)
+				{
+					var ctx = image.colored.getContext("2d");
+					ctx.drawImage(image.img, 0, 0);
+
+					var w = image.colored.width;
+					var h = image.colored.height;
+					var imageData = ctx.getImageData(0, 0, w, h);
+					var data = imageData.data;
+
+					var color_r = parseInt(color.substr(1, 2), 16) / 255;
+					var color_g = parseInt(color.substr(3, 2), 16) / 255;
+					var color_b = parseInt(color.substr(5, 2), 16) / 255;
+
+					for (var j = 0, m = 4 * w * h; j < m; j++)
+					{
+						data[j++] *= color_r;
+						data[j++] *= color_g;
+						data[j++] *= color_b;
+					}
+
+					ctx.putImageData(imageData, 0, 0);
+					image.colored.color = color;
+				}
+
+				img = image.colored;
+			}
+
 			context.save();
 			context.translate(x1, y1);
 			context.scale(1 / image.scale, 1 / image.scale);
 			context.rotate(r);
 			context.scale(sx, sy);
-			context.drawImage(image.img, -cx, -cy);
+			context.drawImage(img, -cx, -cy);
 			context.restore();
 		}
 	}
@@ -1299,6 +1349,9 @@ function reload_images(file_list)
 				app.images[id] = app.images[id] || {};
 				app.images[id].scale = scale;
 				app.images[id].img = null;
+
+				if (app.images[id].colored)
+					delete app.images[id].colored;
 
 				img.onload = function() {
 					app.images[id].img = img;
