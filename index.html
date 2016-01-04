@@ -195,8 +195,13 @@ function initialize()
 	zoom_to_fit();
 	update_canvas();
 
-	for (name in app.gostek.anims)
+	var anim_names = Object.keys(app.gostek.anims);
+
+	anim_names.sort();
+
+	for (var i = 0; i < anim_names.length; i++)
 	{
+		var name = anim_names[i];
 		var option = document.createElement("option");
 		option.textContent = name;
 		option.setAttribute("value", name);
@@ -263,7 +268,12 @@ function on_anim_change(event)
 	var value = app.dom.anim_list.options[app.dom.anim_list.selectedIndex].value;
 
 	if (value !== app.gostek.animation)
+	{
 		set_animation(value);
+
+		if (!app.anim.running)
+			stop();
+	}
 }
 
 function on_checkbox(event)
@@ -517,11 +527,20 @@ function on_beforeunload()
 	auto_save();
 }
 
-function sprite(image_id, p1, p2, cx, cy, visible, flex, flip, team)
+function sprite(image_id, p1, p2, cx, cy, visible, flex, flip, team, color, alpha)
 {
-	return {id: image_id, p1: p1, p2: p2, cx: cx, cy: cy,
-		visible: !!visible, flex: !!flex, flip: !!flip,
-		team: !!team, base: !!visible};
+	return {
+		id: image_id,
+		p1: p1, p2: p2,
+		cx: cx, cy: cy,
+		visible: !!visible,
+		flex: !!flex,
+		flip: !!flip,
+		team: !!team,
+		base: !!visible,
+		color: color,
+		alpha: alpha
+	};
 }
 
 function create_gostek()
@@ -530,8 +549,6 @@ function create_gostek()
 
 	gostek.sprites = {};
 	gostek.draw_list = [];
-	gostek.state = {};
-	gostek.state.team2 = false;
 	gostek.skeleton = null;
 	gostek.animation = null;
 	gostek.anims = {};
