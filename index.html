@@ -1085,11 +1085,14 @@ function download_gostek_data()
 			+!!sprite.base + ", ",
 			+!!sprite.flip + ", ",
 			+!!sprite.team + ", ",
-			flex.toFixed(5) + ");{$ENDIF}",
+			flex.toFixed(5) + ", ",
+			"COLOR_" + sprite.color + ", ",
+			"ALPHA_" + sprite.alpha,
+			");{$ENDIF}"
 		]);
 	}
 
-	download("GostekGfx.pas", format_columns(rows, "L RLRRRRRRRR").join("\n") + [
+	download("GostekGraphics.inc", format_columns(rows, "L RLRRRRRRRRLL ").join("\n") + [
 		"", "",
 		"{$IFDEF IDS}",
 		"GOSTEK_FIRST           = GOSTEK_SECONDARY_DEAGLES;",
