@@ -543,7 +543,7 @@ function sprite(image_id, p1, p2, cx, cy, visible, flex, flip, team, color, alph
 		p1: p1, p2: p2,
 		cx: cx, cy: cy,
 		visible: !!visible,
-		flex: !!flex,
+		flex: flex,
 		flip: !!flip,
 		team: !!team,
 		base: !!visible,
@@ -855,15 +855,8 @@ function render_gostek(gostek)
 				cy = sprite.cy * image.img.height;
 			}
 
-			if (sprite.flex)
-			{
-				var p1 = app.objects["gostek.po"].points[sprite.p1 - 1];
-				var p2 = app.objects["gostek.po"].points[sprite.p2 - 1];
-				var d1 = sqr(p2.x - p1.x) + sqr(p2.y - p1.y);
-				var d2 = sqr(x2 - x1) + sqr(y2 - y1);
-
-				sx = min(2, sqrt(d2 / d1));
-			}
+			if (sprite.flex > 0)
+				sx = min(1, sqrt(sqr(x2 - x1) + sqr(y2 - y1)) / sprite.flex);
 
 			var img = image.img;
 
@@ -1064,14 +1057,6 @@ function download_gostek_data()
 		var id = app.gostek.draw_list[i];
 		var sprite = app.gostek.sprites[id];
 		var gfxid = gfx_ids[sprite.id] || 0;
-		var flex = 0;
-
-		if (sprite.flex)
-		{
-			var p1 = app.objects["gostek.po"].points[sprite.p1 - 1];
-			var p2 = app.objects["gostek.po"].points[sprite.p2 - 1];
-			flex = distance(p1, p2);
-		}
 
 		rows.push([
 			"{$IFDEF IDS}GOSTEK_" + id,
@@ -1085,7 +1070,7 @@ function download_gostek_data()
 			+!!sprite.base + ", ",
 			+!!sprite.flip + ", ",
 			+!!sprite.team + ", ",
-			flex.toFixed(5) + ", ",
+			sprite.flex + ", ",
 			"COLOR_" + sprite.color + ", ",
 			"ALPHA_" + sprite.alpha,
 			");{$ENDIF}"
