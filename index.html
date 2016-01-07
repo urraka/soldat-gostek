@@ -92,12 +92,12 @@ input[type="file"] {position:absolute;opacity:0;bottom:100%;outline:0;}
 				<input id="anim_speed" type="text" value="100" size="3"><span>%</span>
 				<span class="divisor"></span>
 				<label>Gostek&nbsp;</label>
-				<span class="checkbox" id="btn_sprites">[ ]&nbsp;Sprites</span>&nbsp;
-				<span class="checkbox" id="btn_points">[ ]&nbsp;Points</span>&nbsp;
-				<span class="checkbox" id="btn_lines">[ ]&nbsp;Lines</span>&nbsp;
-				<span class="checkbox" id="btn_chain">[ ]&nbsp;Chain</span>&nbsp;
-				<span class="checkbox" id="btn_dreadlocks">[ ]&nbsp;Dreadlocks</span>&nbsp;
-				<span class="checkbox" id="btn_flip">[ ]&nbsp;Flip</span>
+				<span class="checkbox" id="btn_sprites">[&nbsp;]&nbsp;Sprites</span>&nbsp;
+				<span class="checkbox" id="btn_points">[&nbsp;]&nbsp;Points</span>&nbsp;
+				<span class="checkbox" id="btn_lines">[&nbsp;]&nbsp;Lines</span>&nbsp;
+				<span class="checkbox" id="btn_chain">[&nbsp;]&nbsp;Chain</span>&nbsp;
+				<span class="checkbox" id="btn_dreadlocks">[&nbsp;]&nbsp;Dreadlocks</span>&nbsp;
+				<span class="checkbox" id="btn_flip">[&nbsp;]&nbsp;Flip</span>
 				<span class="divisor"></span>
 				<label>Zoom&nbsp;</label>
 				<button class="bracket" id="btn_zoom_auto">Auto</button>
@@ -365,7 +365,7 @@ function is_checked(x)
 
 function set_checked(x, checked)
 {
-	var str = (checked ? "[•]" : "[ ]");
+	var str = (checked ? "[•]" : "[\u00A0]");
 
 	if (typeof x === "object")
 		x.textContent = str + x.textContent.slice(3);
