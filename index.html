@@ -1237,8 +1237,6 @@ function load_zip(data)
 		function create_zip(data)
 		{
 			var zip = new JSZip(data);
-			var first = Object.keys(zip.files)[0];
-			var root = first.slice(0, first.indexOf("/") + 1);
 			var list = {};
 
 			for (var name in zip.files)
@@ -1247,11 +1245,10 @@ function load_zip(data)
 
 				if (!entry.dir)
 				{
-					var path = name.slice(root.length);
-					var dir = path.slice(0, path.indexOf("/"));
+					var dir = name.slice(0, name.indexOf("/"));
 
 					if (dir === "gostek-gfx" || dir === "weapons-gfx")
-						list[path] = new Blob([entry.asArrayBuffer()]);
+						list[name] = new Blob([entry.asArrayBuffer()]);
 				}
 			}
 
