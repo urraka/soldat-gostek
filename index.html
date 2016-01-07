@@ -904,7 +904,7 @@ function render_gostek(gostek)
 			context.scale(1 / image.scale, 1 / image.scale);
 			context.rotate(r);
 			context.scale(sx, sy);
-			context.drawImage(img, -(cx + 1), -(cy + 1));
+			context.drawImage(img, -(cx + 1), -(cy + sy * flip));
 			context.restore();
 		}
 	}
