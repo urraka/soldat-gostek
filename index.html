@@ -112,6 +112,7 @@ input[type="file"] {position:absolute;opacity:0;bottom:100%;outline:0;}
 			<label class="bracket"><input id="btn_load" type="file">Load</label>
 			<button class="bracket" id="btn_save">Save</button>
 			<button class="bracket" id="btn_reset">Reset</button>
+			<button class="bracket" id="btn_modini">mod.ini</button>
 		</div>
 		<div id="table_panel">
 			<table>
@@ -256,6 +257,7 @@ function initialize()
 	document.querySelector("#btn_load").addEventListener("change", on_load_gostek);
 	document.querySelector("#btn_save").addEventListener("click", on_save_gostek);
 	document.querySelector("#btn_reset").addEventListener("click", reset_gostek);
+	document.querySelector("#btn_modini").addEventListener("click", download_mod_ini);
 }
 
 function on_anim_speed(event)
@@ -1062,6 +1064,7 @@ function download_gostek_data()
 			"{$IFDEF IDS}GOSTEK_" + id,
 			" = ",
 			i + ";{$ELSE}Def(",
+			"'" + title_case(id) + "',",
 			gfxid + ", ",
 			sprite.p1 + ", ",
 			sprite.p2 + ", ",
@@ -1077,15 +1080,29 @@ function download_gostek_data()
 		]);
 	}
 
-	download("GostekGraphics.inc", format_columns(rows, "L RLRRRRRRRRLL ").join("\n") + [
-		"", "",
-		"{$IFDEF IDS}",
-		"GOSTEK_FIRST           = GOSTEK_SECONDARY_DEAGLES;",
-		"GOSTEK_LAST            = GOSTEK_RIGHT_HAND;",
-		"GOSTEK_PRIMARY_FIRST   = GOSTEK_PRIMARY_DEAGLES;",
-		"GOSTEK_SECONDARY_FIRST = GOSTEK_SECONDARY_DEAGLES;",
-		"{$ENDIF}"
-	].join("\n") + "\n");
+	download(
+		"GostekGraphics.inc",
+		format_columns(rows, "L RLLRRRRRRRRLL ").join("\n") + [
+			"", "",
+			"{$IFDEF IDS}",
+			"GOSTEK_FIRST           = GOSTEK_SECONDARY_DEAGLES;",
+			"GOSTEK_LAST            = GOSTEK_RIGHT_HAND;",
+			"GOSTEK_PRIMARY_FIRST   = GOSTEK_PRIMARY_DEAGLES;",
+			"GOSTEK_SECONDARY_FIRST = GOSTEK_SECONDARY_DEAGLES;",
+			"{$ENDIF}"
+		].join("\n") + "\n"
+	);
+}
+
+function download_mod_ini()
+{
+	download("mod.ini", "[GOSTEK]\n" + app.gostek.draw_list.map(function(id) {
+		var name = title_case(id);
+		return [
+			name + "_CenterX=" + app.gostek.sprites[id].cx,
+			name + "_CenterY=" + app.gostek.sprites[id].cy
+		].join("\n");
+	}).join("\n"));
 }
 
 function download(filename, data)
@@ -1104,6 +1121,13 @@ function download(filename, data)
 		anchor.setAttribute("download", filename);
 		anchor.click();
 	}
+}
+
+function title_case(str)
+{
+	return str.split("_").map(function(s) {
+		return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+	}).join("_");
 }
 
 function format_columns(rows, align)
