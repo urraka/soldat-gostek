@@ -112,7 +112,6 @@ input[type="file"] {position:absolute;opacity:0;bottom:100%;outline:0;}
 			<label class="bracket"><input id="btn_load" type="file">Load</label>
 			<button class="bracket" id="btn_save">Save</button>
 			<button class="bracket" id="btn_reset">Reset</button>
-			<button class="bracket" id="btn_modini">mod.ini</button>
 		</div>
 		<div id="table_panel">
 			<table>
@@ -257,7 +256,6 @@ function initialize()
 	document.querySelector("#btn_load").addEventListener("change", on_load_gostek);
 	document.querySelector("#btn_save").addEventListener("click", on_save_gostek);
 	document.querySelector("#btn_reset").addEventListener("click", reset_gostek);
-	document.querySelector("#btn_modini").addEventListener("click", download_mod_ini);
 }
 
 function on_anim_speed(event)
@@ -438,11 +436,63 @@ function load_gostek(data)
 function on_load_gostek(event)
 {
 	var r = new FileReader();
+
+	r.onload = function()
+	{
+		var ini_data = load_ini(r.result).gostek;
+
+		if (ini_data)
+		{
+			var data = {};
+			var keys = Object.keys(app.gostek.sprites);
+
+			for (var i = 0; i < keys.length; i++)
+			{
+				var k = keys[i].toLowerCase();
+
+				if ((k + "_centerx") in ini_data)
+				{
+					var value = parseFloat(ini_data[k + "_centerx"]);
+
+					if (!isNaN(value))
+					{
+						data[keys[i]] = data[keys[i]] || {};
+						data[keys[i]].cx = value;
+					}
+				}
+
+				if ((k + "_centery") in ini_data)
+				{
+					var value = parseFloat(ini_data[k + "_centery"]);
+
+					if (!isNaN(value))
+					{
+						data[keys[i]] = data[keys[i]] || {};
+						data[keys[i]].cy = value;
+					}
+				}
+			}
+
+			load_gostek(data);
+		}
+	};
+
+	r.readAsText(event.target.files[0]);
+}
+
+function on_load_gostek_json(event)
+{
+	var r = new FileReader();
 	r.onload = function() { load_gostek(JSON.parse(r.result)); };
 	r.readAsText(event.target.files[0]);
 }
 
 function on_save_gostek()
+{
+	download_mod_ini();
+}
+
+function on_save_gostek_json()
 {
 	var data = {};
 
