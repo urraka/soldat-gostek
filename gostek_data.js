@@ -93,7 +93,7 @@ var gostek_data = [
 ["PRIMARY_RUGER_CLIP",        "",                             16, 15,      0,    0,   0,    0,    1,    0,   "NONE",       "BASE" ],
 ["PRIMARY_RUGER_FIRE",        "weapons-gfx/ruger77-fire",     16, 15,  -0.35, 0.85,   0,    0,    0,    0,   "NONE",       "BASE" ],
 ["PRIMARY_M79",               "weapons-gfx/m79",              16, 15,    0.1,  0.7,   0,    0,    1,    0,   "NONE",       "BASE" ],
-["PRIMARY_M79_CLIP",          "",                             16, 15,      0,    0,   0,    0,    1,    0,   "NONE",       "BASE" ],
+["PRIMARY_M79_CLIP",          "weapons-gfx/m79-clip",         16, 15,      0,    0,   0,    0,    1,    0,   "NONE",       "BASE" ],
 ["PRIMARY_M79_FIRE",          "weapons-gfx/m79-fire",         16, 15,   -0.4,  0.8,   0,    0,    0,    0,   "NONE",       "BASE" ],
 ["PRIMARY_BARRETT",           "weapons-gfx/barretm82",        16, 15,   0.15,  0.7,   0,    0,    1,    0,   "NONE",       "BASE" ],
 ["PRIMARY_BARRETT_CLIP",      "weapons-gfx/barretm82-clip",   16, 15,   0.15,  0.7,   0,    0,    1,    0,   "NONE",       "BASE" ],
